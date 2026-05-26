@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 Pipeline Forecast</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #070b14;
+    --bg2:     #0b1120;
+    --bg3:     #0e1628;
+    --border:  #182234;
+    --border2: #1e2d4a;
+    --text:    #e2e8f0;
+    --muted:   #94a3b8;
+    --dim:     #475569;
+    --dimmer:  #2d3f58;
+    --green:   #22c55e;
+    --blue:    #3b82f6;
+    --orange:  #f97316;
+    --slate:   #94a3b8;
+    --red:     #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border2);
+    padding: 24px 32px 20px;
+    background: linear-gradient(135deg, var(--bg) 0%, var(--bg2) 100%);
+  }
+  .header-breadcrumb {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  }
+  .header-breadcrumb span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  }
+  .header-breadcrumb .crumb1 { color: var(--dim); }
+  .header-breadcrumb .sep   { color: var(--border2); }
+  .header-breadcrumb .crumb2 { color: var(--blue); }
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: #f1f5f9;
+  }
+  header p {
+    font-size: 12px; color: var(--dim); margin-top: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── KPI Strip ── */
+  .kpi-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border2);
+  }
+  .kpi {
+    padding: 20px 24px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    animation: fadeUp 0.5s ease both;
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px; font-weight: 700; letter-spacing: -1px;
+  }
+  .kpi-sub { font-size: 11px; color: var(--dimmer); margin-top: 5px; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--border2);
+    padding: 0 32px; background: var(--bg);
+  }
+  .tab {
+    background: none; border: none; cursor: pointer;
+    padding: 14px 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab:hover:not(.active) { color: var(--muted); }
+
+  /* ── Main content ── */
+  .content { padding: 28px 32px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Estado cards ── */
+  .estado-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+  }
+  .estado-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .estado-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .estado-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .estado-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px; padding: 3px 9px; border-radius: 20px;
+  }
+  .estado-monto {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 5px;
+  }
+  .estado-forecast {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--dim);
+  }
+  .progress-bar {
+    margin-top: 12px; height: 3px;
+    background: var(--border2); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .progress-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px; color: var(--dimmer); margin-top: 5px;
+  }
+
+  /* ── Cliente cards ── */
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 14px;
+  }
+  .cliente-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cliente-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cliente-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .cliente-count { font-size: 11px; color: var(--dim); }
+  .cliente-monto {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px; font-weight: 700; color: #f1f5f9; text-align: right;
+  }
+  .cliente-forecast {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--blue); text-align: right; margin-top: 3px;
+  }
+
+  /* ── Charts ── */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px;
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-card-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 20px;
+  }
+  canvas { max-height: 260px; }
+
+  /* ── Forecast summary ── */
+  .forecast-summary {
+    background: var(--bg2);
+    border: 1px solid #3b82f620;
+    border-radius: 8px; padding: 24px;
+    display: flex; gap: 40px; align-items: center;
+    margin-top: 20px;
+  }
+  .forecast-big {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 42px; font-weight: 700; color: var(--blue); letter-spacing: -2px;
+  }
+  .forecast-big-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 8px;
+  }
+  .forecast-big-sub { font-size: 12px; color: var(--dimmer); margin-top: 5px; }
+  .forecast-rows { display: flex; flex-direction: column; gap: 8px; }
+  .forecast-row { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .forecast-row-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--muted); width: 90px;
+  }
+  .forecast-row-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600; width: 72px; text-align: right;
+  }
+  .forecast-row-prob {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--dimmer);
+  }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { border-bottom: 1px solid var(--border2); }
+  th {
+    padding: 10px 14px; text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim); font-weight: 500;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(odd)  { background: var(--bg); }
+  tbody tr:nth-child(even) { background: var(--bg2); }
+  tbody tr:hover { background: var(--bg3); }
+  td { padding: 13px 14px; }
+  .td-proyecto { color: var(--text); font-weight: 500; }
+  .td-muted    { color: var(--muted); }
+  .estado-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .td-monto {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; color: #f1f5f9;
+  }
+  .td-forecast {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+  }
+  tfoot tr { border-top: 1px solid var(--border2); }
+  tfoot td {
+    padding: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700; font-size: 13px;
+  }
+  .tfoot-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim); font-weight: 500;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.10s; }
+  .kpi:nth-child(3) { animation-delay: 0.15s; }
+  .kpi:nth-child(4) { animation-delay: 0.20s; }
+
+  @media (max-width: 768px) {
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .cliente-grid { grid-template-columns: 1fr; }
+    .forecast-summary { flex-direction: column; gap: 20px; }
+    header, .content, .tabs { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-breadcrumb">
+    <span class="crumb1">Sales Intelligence</span>
+    <span class="sep">▸</span>
+    <span class="crumb2">Pipeline Forecast</span>
+  </div>
+  <h1>💰 Oportunidades</h1>
+  <p id="header-sub">Cargando…</p>
+</header>
+
+<!-- KPIs -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Pipeline Total</div>
+    <div class="kpi-value" style="color:var(--muted)" id="kpi-pipeline">—</div>
+    <div class="kpi-sub" id="kpi-pipeline-sub"></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Forecast Ponderado</div>
+    <div class="kpi-value" style="color:var(--blue)" id="kpi-forecast">—</div>
+    <div class="kpi-sub">por probabilidad de cierre</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Ganado</div>
+    <div class="kpi-value" style="color:var(--green)" id="kpi-ganado">—</div>
+    <div class="kpi-sub" id="kpi-ganado-sub"></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">En Juego</div>
+    <div class="kpi-value" style="color:var(--orange)" id="kpi-enjuego">—</div>
+    <div class="kpi-sub" id="kpi-enjuego-sub"></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="setTab('pipeline')">Pipeline</button>
+  <button class="tab" onclick="setTab('graficos')">Gráficos</button>
+  <button class="tab" onclick="setTab('detalle')">Detalle</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- Pipeline Panel -->
+  <div id="panel-pipeline" class="panel active">
+    <div class="estado-grid" id="estado-grid"></div>
+    <div class="section-label">Por Cliente</div>
+    <div class="cliente-grid" id="cliente-grid"></div>
+  </div>
+
+  <!-- Gráficos Panel -->
+  <div id="panel-graficos" class="panel">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-card-label">Distribución por Estado</div>
+        <canvas id="chartPie"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-label">Pipeline vs Forecast</div>
+        <canvas id="chartBar"></canvas>
+      </div>
+    </div>
+    <div class="forecast-summary">
+      <div>
+        <div class="forecast-big-label">Forecast Total Ponderado</div>
+        <div class="forecast-big" id="forecast-big">—</div>
+        <div class="forecast-big-sub" id="forecast-big-sub"></div>
+      </div>
+      <div class="forecast-rows" id="forecast-rows"></div>
+    </div>
+  </div>
+
+  <!-- Detalle Panel -->
+  <div id="panel-detalle" class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Proyecto</th><th>Cliente</th><th>Estado</th>
+            <th>Prioridad</th><th>Solución</th>
+            <th>Monto</th><th>Forecast</th><th>Fecha Límite</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="tfoot-label">Total</td>
+            <td class="td-monto" id="tfoot-pipeline">—</td>
+            <td style="color:var(--blue)" id="tfoot-forecast">—</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+const OPORTUNIDADES = [
+  { proyecto:"SMCC (2 años)",         cliente:"ICE",   estado:"Ganado",     monto:1930000, prioridad:"Baja",  solucion:["Yoizen"],          fecha:"2026-06-30" },
+  { proyecto:"Analytics Verint",      cliente:"ICE",   estado:"Ganado",     monto:884000,  prioridad:"Baja",  solucion:["Verint"],           fecha:"2026-03-30" },
+  { proyecto:"IVR",                   cliente:"ICE",   estado:"Ganado",     monto:100000,  prioridad:"Baja",  solucion:["AVAYA"],            fecha:"2026-03-30" },
+  { proyecto:"WhatsApp Marketing",    cliente:"ICE",   estado:"Ganado",     monto:673000,  prioridad:"Baja",  solucion:["Yoizen"],           fecha:"2026-03-30" },
+  { proyecto:"Soporte IPTV",          cliente:"ICE",   estado:"Presentado", monto:1300000, prioridad:"Alta",  solucion:["IPTV"],             fecha:"2026-09-30" },
+  { proyecto:"Whitepages",            cliente:"ICE",   estado:"Análisis",   monto:255000,  prioridad:"Alta",  solucion:["Midiavox"],         fecha:"2026-06-30" },
+  { proyecto:"Encoder",               cliente:"ICE",   estado:"Análisis",   monto:130000,  prioridad:"Alta",  solucion:["ATEME"],            fecha:"2026-06-30" },
+  { proyecto:"911 - Contact Center IP",cliente:"9-1-1",estado:"Prospecto",  monto:1600000, prioridad:"Alta",  solucion:["Verint","AVAYA"],   fecha:"2026-05-25" },
+  { proyecto:"Service Journey",       cliente:"ICE",   estado:"Prospecto",  monto:100000,  prioridad:"Media", solucion:["QCS"],              fecha:null },
+];
+
+const ESTADOS = {
+  Ganado:     { color:"#22c55e", prob:1.00 },
+  Presentado: { color:"#3b82f6", prob:0.60 },
+  Análisis:   { color:"#f97316", prob:0.40 },
+  Prospecto:  { color:"#94a3b8", prob:0.15 },
+  Perdido:    { color:"#ef4444", prob:0.00 },
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+const fmt = n => n >= 1e6 ? `$${(n/1e6).toFixed(2)}M` : `$${(n/1e3).toFixed(0)}K`;
+const fmtFull = n => "$" + n.toLocaleString("en-US");
+
+// ── Aggregations ───────────────────────────────────────────────────────────
+const totalPipeline = OPORTUNIDADES.reduce((s,o) => s + o.monto, 0);
+const byEstado = Object.entries(ESTADOS).map(([estado, cfg]) => {
+  const ops = OPORTUNIDADES.filter(o => o.estado === estado);
+  const total = ops.reduce((s,o) => s + o.monto, 0);
+  return { estado, ...cfg, count: ops.length, total, forecast: total * cfg.prob };
+}).filter(e => e.count > 0);
+
+const totalForecast = byEstado.reduce((s,e) => s + e.forecast, 0);
+const ganado = byEstado.find(e => e.estado === "Ganado") || { total:0, count:0 };
+const openOps = OPORTUNIDADES.filter(o => o.estado !== "Ganado" && o.estado !== "Perdido");
+
+const byCliente = ["ICE","9-1-1"].map(c => {
+  const ops = OPORTUNIDADES.filter(o => o.cliente === c);
+  return {
+    cliente: c,
+    total: ops.reduce((s,o) => s + o.monto, 0),
+    forecast: ops.reduce((s,o) => s + o.monto * ESTADOS[o.estado].prob, 0),
+    count: ops.length,
+  };
+});
+
+// ── KPIs ───────────────────────────────────────────────────────────────────
+document.getElementById("header-sub").textContent =
+  `${OPORTUNIDADES.length} oportunidades · Pipeline activo`;
+document.getElementById("kpi-pipeline").textContent = fmt(totalPipeline);
+document.getElementById("kpi-pipeline-sub").textContent = `${OPORTUNIDADES.length} oportunidades`;
+document.getElementById("kpi-forecast").textContent = fmt(totalForecast);
+document.getElementById("kpi-ganado").textContent = fmt(ganado.total);
+document.getElementById("kpi-ganado-sub").textContent = `${ganado.count} cerradas`;
+document.getElementById("kpi-enjuego").textContent = fmt(openOps.reduce((s,o)=>s+o.monto,0));
+document.getElementById("kpi-enjuego-sub").textContent = `${openOps.length} abiertas`;
+
+// ── Estado Cards ───────────────────────────────────────────────────────────
+const estadoGrid = document.getElementById("estado-grid");
+byEstado.forEach((e, i) => {
+  const pct = Math.round((e.total / totalPipeline) * 100);
+  const card = document.createElement("div");
+  card.className = "estado-card";
+  card.style.borderLeft = `3px solid ${e.color}`;
+  card.style.borderColor = `var(--border)`;
+  card.style.borderLeftColor = e.color;
+  card.style.animationDelay = `${i * 0.08}s`;
+  card.innerHTML = `
+    <div class="estado-card-header">
+      <span class="estado-label" style="color:${e.color}">${e.estado}</span>
+      <span class="estado-badge" style="background:${e.color}18;color:${e.color}">${e.count} op.</span>
+    </div>
+    <div class="estado-monto">${fmt(e.total)}</div>
+    <div class="estado-forecast">
+      Forecast: <span style="color:${e.color}">${fmt(e.forecast)}</span>
+      <span style="color:var(--dimmer);margin-left:6px">(${Math.round(e.prob*100)}%)</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width:${pct}%;background:${e.color}"></div>
+    </div>
+    <div class="progress-pct">${pct}% del pipeline</div>
+  `;
+  estadoGrid.appendChild(card);
+});
+
+// ── Cliente Cards ──────────────────────────────────────────────────────────
+const clienteGrid = document.getElementById("cliente-grid");
+byCliente.forEach(c => {
+  const card = document.createElement("div");
+  card.className = "cliente-card";
+  card.innerHTML = `
+    <div>
+      <div class="cliente-name">${c.cliente}</div>
+      <div class="cliente-count">${c.count} oportunidades</div>
+    </div>
+    <div>
+      <div class="cliente-monto">${fmt(c.total)}</div>
+      <div class="cliente-forecast">Forecast: ${fmt(c.forecast)}</div>
+    </div>
+  `;
+  clienteGrid.appendChild(card);
+});
+
+// ── Charts ─────────────────────────────────────────────────────────────────
+let pieChart, barChart;
+
+function initCharts() {
+  if (pieChart) return;
+
+  const gridColor = "#182234";
+  const tickColor = "#475569";
+
+  // Pie
+  pieChart = new Chart(document.getElementById("chartPie"), {
+    type: "doughnut",
+    data: {
+      labels: byEstado.map(e => e.estado),
+      datasets: [{
+        data: byEstado.map(e => e.total),
+        backgroundColor: byEstado.map(e => e.color),
+        borderColor: "#0b1120",
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: tickColor, font: { family:"'IBM Plex Mono'" }, boxWidth: 12 } },
+        tooltip: {
+          backgroundColor: "#0e1628", borderColor: "#182234", borderWidth: 1,
+          callbacks: { label: ctx => ` ${fmtFull(ctx.parsed)}` }
+        }
+      },
+      cutout: "58%",
+    }
+  });
+
+  // Bar
+  barChart = new Chart(document.getElementById("chartBar"), {
+    type: "bar",
+    data: {
+      labels: byEstado.map(e => e.estado),
+      datasets: [
+        {
+          label: "Pipeline",
+          data: byEstado.map(e => e.total),
+          backgroundColor: "#1e3a5f",
+          borderRadius: 4,
+        },
+        {
+          label: "Forecast",
+          data: byEstado.map(e => Math.round(e.forecast)),
+          backgroundColor: byEstado.map(e => e.color),
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      scales: {
+        x: { ticks: { color: tickColor, font:{family:"'IBM Plex Mono'", size:10} }, grid:{color: gridColor} },
+        y: { ticks: { color: tickColor, font:{family:"'IBM Plex Mono'", size:10}, callback: v => fmt(v) }, grid:{color: gridColor} }
+      },
+      plugins: {
+        legend: { labels: { color: tickColor, font:{family:"'IBM Plex Mono'"}, boxWidth:12 } },
+        tooltip: {
+          backgroundColor: "#0e1628", borderColor: "#182234", borderWidth: 1,
+          callbacks: { label: ctx => ` ${fmtFull(ctx.parsed.y)}` }
+        }
+      }
+    }
+  });
+
+  // Forecast summary rows
+  document.getElementById("forecast-big").textContent = fmt(totalForecast);
+  document.getElementById("forecast-big-sub").textContent =
+    `sobre un pipeline de ${fmt(totalPipeline)}`;
+
+  const rows = document.getElementById("forecast-rows");
+  byEstado.forEach(e => {
+    const row = document.createElement("div");
+    row.className = "forecast-row";
+    row.innerHTML = `
+      <div class="dot" style="background:${e.color}"></div>
+      <span class="forecast-row-label">${e.estado}</span>
+      <span class="forecast-row-value" style="color:${e.color}">${fmt(e.forecast)}</span>
+      <span class="forecast-row-prob">×${e.prob}</span>
+    `;
+    rows.appendChild(row);
+  });
+}
+
+// ── Table ──────────────────────────────────────────────────────────────────
+const tbody = document.getElementById("tabla-body");
+OPORTUNIDADES.forEach(o => {
+  const cfg = ESTADOS[o.estado];
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="td-proyecto">${o.proyecto}</td>
+    <td class="td-muted">${o.cliente}</td>
+    <td><span class="estado-pill" style="background:${cfg.color}18;color:${cfg.color}">${o.estado}</span></td>
+    <td class="td-muted">${o.prioridad}</td>
+    <td style="color:var(--dim)">${o.solucion.join(", ")}</td>
+    <td class="td-monto">${fmt(o.monto)}</td>
+    <td class="td-forecast" style="color:${cfg.color}">${fmt(o.monto * cfg.prob)}</td>
+    <td style="color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px">${o.fecha ?? "—"}</td>
+  `;
+  tbody.appendChild(tr);
+});
+document.getElementById("tfoot-pipeline").textContent = fmt(totalPipeline);
+document.getElementById("tfoot-forecast").textContent = fmt(totalForecast);
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function setTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  event.currentTarget.classList.add("active");
+  document.getElementById("panel-" + name).classList.add("active");
+  if (name === "graficos") initCharts();
+}
+</script>
+</body>
+</html>
