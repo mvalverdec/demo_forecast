@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Datacom – PoC</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; background: #f4f6f9; color: #222; }
+
+  /* ─── HEADER ─── */
+  .header { background: #1a3a5c; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  .header-logo { font-size: 22px; font-weight: 700; letter-spacing: 1px; color: #fff; }
+  .header-subtitle { font-size: 11px; opacity: .7; margin-top: 2px; }
+  .header-title { margin-left: auto; font-size: 16px; font-weight: 600; opacity: .9; }
+
+  /* ─── TABS ─── */
+  .tabs { display: flex; background: #132d4a; padding: 0 24px; }
+  .tab { padding: 10px 20px; cursor: pointer; color: #a0b4c8; font-size: 13px; border-bottom: 3px solid transparent; transition: .15s; user-select: none; }
+  .tab:hover { color: #fff; }
+  .tab.active { color: #fff; border-bottom-color: #4a9fd4; font-weight: 600; }
+
+  /* ─── PANELS ─── */
+  .panel { display: none; padding: 20px 24px; }
+  .panel.active { display: block; }
+
+  /* ─── SECTION CARD ─── */
+  .card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 16px 20px; margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #1a3a5c; margin-bottom: 12px; border-bottom: 1px solid #e5e9ef; padding-bottom: 6px; }
+
+  /* ─── TABLES ─── */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #1a3a5c; color: #fff; padding: 7px 8px; text-align: center; font-weight: 600; white-space: nowrap; }
+  th.left { text-align: left; }
+  td { padding: 6px 8px; border-bottom: 1px solid #eef0f3; text-align: right; }
+  td.left { text-align: left; }
+  td.center { text-align: center; }
+  tr.subtotal td { background: #f0f4f9; font-weight: 600; }
+  tr.total-row td { background: #1a3a5c; color: #fff; font-weight: 700; font-size: 13px; }
+  tr.section-header td { background: #e8eef4; font-weight: 700; color: #1a3a5c; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+  tr:hover td { background: #f7f9fc; }
+  tr.subtotal:hover td, tr.total-row:hover td, tr.section-header:hover td { background: inherit; }
+
+  /* editable inputs inside table */
+  input[type="text"], input[type="number"] {
+    border: none; background: transparent; width: 100%; text-align: right; font-size: 12px; font-family: Arial, sans-serif; color: #00c; padding: 0 2px;
+  }
+  input[type="text"].left { text-align: left; }
+  input:focus { outline: 1px solid #4a9fd4; border-radius: 2px; background: #fff; }
+
+  /* ─── INDICATORS ─── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 14px 16px; text-align: center; }
+  .kpi-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: #1a3a5c; }
+  .kpi-value.green { color: #19864a; }
+  .kpi-value.red { color: #c0392b; }
+  .kpi-sub { font-size: 10px; color: #999; margin-top: 2px; }
+
+  /* ─── PARAMS ─── */
+  .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .param { display: flex; flex-direction: column; gap: 4px; }
+  .param label { font-size: 11px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: .3px; }
+  .param input { border: 1px solid #c5cdd6; border-radius: 4px; padding: 6px 8px; font-size: 13px; color: #00c; font-family: Arial, sans-serif; }
+  .param input:focus { outline: none; border-color: #4a9fd4; }
+
+  /* ─── BUTTONS ─── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: .15s; }
+  .btn-primary { background: #1a3a5c; color: #fff; }
+  .btn-primary:hover { background: #244d78; }
+  .btn-danger { background: #c0392b; color: #fff; font-size: 11px; padding: 4px 8px; }
+  .btn-danger:hover { background: #a93226; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn-print { background: #19864a; color: #fff; }
+  .btn-print:hover { background: #146b3c; }
+
+  /* ─── QUOTE SHEET ─── */
+  .quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .quote-company { font-size: 11px; line-height: 1.6; color: #555; }
+  .quote-title { font-size: 18px; font-weight: 700; color: #1a3a5c; text-align: right; }
+  .quote-meta { font-size: 11px; color: #666; margin-top: 4px; text-align: right; }
+
+  /* margin positive/negative color */
+  .positive { color: #19864a; }
+  .negative { color: #c0392b; }
+
+  /* ─── PRINT ─── */
+  @media print {
+    body { background: #fff; }
+    .tabs, .tab, .no-print { display: none !important; }
+    .panel { display: block !important; padding: 0; }
+    #panel-costos, #panel-flujo { display: none !important; }
+    #panel-cotizacion { display: block !important; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">DATACOM</div>
+    <div class="header-subtitle">Calle 46, Avenida 9, 5684-1000 San José, Costa Rica &nbsp;·&nbsp; Tel. 2522-7000</div>
+  </div>
+  <div class="header-title">Business Case — Proof of Concept</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('costos')">📋 Hoja de Costos</div>
+  <div class="tab" onclick="switchTab('flujo')">📊 Flujo de Caja</div>
+  <div class="tab" onclick="switchTab('cotizacion')">📄 Cotización Cliente</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 1 – HOJA DE COSTOS
+══════════════════════════════════════════════════════════════ -->
+<div id="panel-costos" class="panel active">
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Ítems de Costo</span>
+      <button class="btn btn-primary btn-sm" onclick="addItem()">+ Agregar ítem</button>
+    </div>
+    <table id="cost-table">
+      <thead>
+        <tr>
+          <th class="left" style="width:30px">#</th>
+          <th class="left" style="min-width:200px">Descripción</th>
+          <th>Cantidad</th>
+          <th>Costo Unitario (Lista)</th>
+          <th>Descuento %</th>
+          <th>C.U. con Descuento</th>
+          <th>Costo Total c/Desc.</th>
+          <th>Logística %</th>
+          <th>Logística $</th>
+          <th>Total Logística</th>
+          <th>C.U. con Logística</th>
+          <th>Costo Total Final</th>
+          <th class="no-print"></th>
+        </tr>
+      </thead>
+      <tbody id="cost-body"></tbody>
+      <tfoot id="cost-foot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 2 – FLUJO DE CAJA
+══════════════════════════════════════════════════════════════ -->
+<div id="panel-flujo" class="panel">
+
+  <div class="card">
+    <div class="card-title">Parámetros del Modelo</div>
+    <div class="param-grid">
+      <div class="param">
+        <label>Margen Objetivo (%)</label>
+        <input type="number" id="p-margen" value="35" min="0" max="99" step="0.1" oninput="recalc()">
+      </div>
+      <div class="param">
+        <label>Comisiones (%)</label>
+        <input type="number" id="p-comision" value="6.08" min="0" step="0.01" oninput="recalc()">
+      </div>
+      <div class="param">
+        <label>Bonificaciones (%)</label>
+        <input type="number" id="p-bonif" value="0.30" min="0" step="0.01" oninput="recalc()">
+      </div>
+      <div class="param">
+        <label>Tasa de Descuento Anual (%)</label>
+        <input type="number" id="p-tasa" value="12" min="0" step="0.1" oninput="recalc()">
+      </div>
+      <div class="param">
+        <label>Plazo de Pago (días)</label>
+        <input type="number" id="p-pago" value="30" min="0" step="1" oninput="recalc()">
+      </div>
+      <div class="param">
+        <label>IVA (%)</label>
+        <input type="number" id="p-iva" value="13" min="0" step="0.1" oninput="recalc()">
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="card">
+    <div class="card-title">Descomposición del Flujo</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="left" style="width:55%">Concepto</th>
+          <th>Costo / Monto</th>
+          <th>Precio de Venta</th>
+          <th>% sobre Ventas</th>
+        </tr>
+      </thead>
+      <tbody id="flujo-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Detalle de Riesgos y Gastos Financieros</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <table>
+        <thead><tr><th class="left">Riesgo</th><th>Monto ($)</th></tr></thead>
+        <tbody>
+          <tr><td class="left">Imprevistos</td><td><input type="number" id="r-imprev" value="0" min="0" oninput="recalc()"></td></tr>
+          <tr><td class="left">Penalizaciones</td><td><input type="number" id="r-penal" value="0" min="0" oninput="recalc()"></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th class="left">Gasto Financiero</th><th>Monto ($)</th></tr></thead>
+        <tbody>
+          <tr><td class="left">Financiamiento (Principal)</td><td><input type="number" id="f-princ" value="0" min="0" oninput="recalc()"></td></tr>
+          <tr><td class="left">Financiamiento (Intereses)</td><td><input type="number" id="f-int" value="0" min="0" oninput="recalc()"></td></tr>
+          <tr><td class="left">Garantías, Pólizas, Seguros</td><td><input type="number" id="f-gar" value="0" min="0" oninput="recalc()"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 3 – COTIZACIÓN CLIENTE
+══════════════════════════════════════════════════════════════ -->
+<div id="panel-cotizacion" class="panel">
+  <div style="margin-bottom:12px;display:flex;gap:8px;" class="no-print">
+    <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir / Exportar PDF</button>
+  </div>
+  <div class="card">
+    <div class="quote-header">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#1a3a5c;margin-bottom:4px;">DATACOM</div>
+        <div class="quote-company">
+          Calle 46, Avenida 9, 5684-1000 San José, Costa Rica<br>
+          Tel. 2522-7000 &nbsp;·&nbsp; Fax 2522-7299
+        </div>
+      </div>
+      <div>
+        <div class="quote-title">OFERTA ECONÓMICA</div>
+        <div class="quote-meta" id="quote-date"></div>
+      </div>
+    </div>
+    <table id="quote-table">
+      <thead>
+        <tr>
+          <th style="width:60px">Partida</th>
+          <th style="width:60px">Línea</th>
+          <th class="left">Descripción</th>
+          <th style="width:160px">Precio Total ($)</th>
+        </tr>
+      </thead>
+      <tbody id="quote-body"></tbody>
+      <tfoot id="quote-foot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════════════════════
+let items = [
+  { desc: 'Convoy Actualizaciones',      qty: 12, unitCost: 1250, discPct: 0,    logPct: 25 },
+  { desc: 'Cambio en la arquitectura',   qty: 3,  unitCost: 1250, discPct: 0,    logPct: 25 },
+];
+
+// ── Computed per-item ──────────────────────────────────────────
+function calcItem(it) {
+  const cuDesc    = it.unitCost * (1 - it.discPct / 100);
+  const ctDesc    = cuDesc * it.qty;
+  const logUnit   = cuDesc * (it.logPct / 100);
+  const logTotal  = logUnit * it.qty;
+  const cuLog     = cuDesc + logUnit;
+  const ctLog     = cuLog * it.qty;
+  return { cuDesc, ctDesc, logUnit, logTotal, cuLog, ctLog };
+}
+
+// ── Aggregates ─────────────────────────────────────────────────
+function totals() {
+  const calcs = items.map(calcItem);
+  return {
+    totalCosto: calcs.reduce((s, c) => s + c.ctLog, 0),
+    calcs
+  };
+}
+
+// ── Parameters ────────────────────────────────────────────────
+function params() {
+  return {
+    margen:   +document.getElementById('p-margen').value  / 100,
+    comision: +document.getElementById('p-comision').value / 100,
+    bonif:    +document.getElementById('p-bonif').value   / 100,
+    tasa:     +document.getElementById('p-tasa').value    / 100,
+    pago:     +document.getElementById('p-pago').value,
+    iva:      +document.getElementById('p-iva').value     / 100,
+    imprev:   +document.getElementById('r-imprev').value  || 0,
+    penal:    +document.getElementById('r-penal').value   || 0,
+    fprinc:   +document.getElementById('f-princ').value   || 0,
+    fint:     +document.getElementById('f-int').value     || 0,
+    fgar:     +document.getElementById('f-gar').value     || 0,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER: HOJA DE COSTOS
+// ═══════════════════════════════════════════════════════════════
+function renderCostTable() {
+  const tbody = document.getElementById('cost-body');
+  const tfoot = document.getElementById('cost-foot');
+  tbody.innerHTML = '';
+
+  let totCost = 0, totLog = 0, totFinal = 0;
+
+  items.forEach((it, idx) => {
+    const c = calcItem(it);
+    totCost  += c.ctDesc;
+    totLog   += c.logTotal;
+    totFinal += c.ctLog;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="center">${idx + 1}</td>
+      <td class="left"><input type="text" class="left" value="${esc(it.desc)}" oninput="items[${idx}].desc=this.value;recalc()"></td>
+      <td><input type="number" value="${it.qty}"      min="0" step="1"    oninput="items[${idx}].qty=+this.value;recalc()"></td>
+      <td><input type="number" value="${it.unitCost}" min="0" step="0.01" oninput="items[${idx}].unitCost=+this.value;recalc()"></td>
+      <td><input type="number" value="${it.discPct}"  min="0" max="100" step="0.1" oninput="items[${idx}].discPct=+this.value;recalc()"></td>
+      <td>${fmt(c.cuDesc)}</td>
+      <td>${fmt(c.ctDesc)}</td>
+      <td><input type="number" value="${it.logPct}" min="0" max="100" step="0.1" oninput="items[${idx}].logPct=+this.value;recalc()"></td>
+      <td>${fmt(c.logUnit)}</td>
+      <td>${fmt(c.logTotal)}</td>
+      <td>${fmt(c.cuLog)}</td>
+      <td style="font-weight:700">${fmt(c.ctLog)}</td>
+      <td class="no-print"><button class="btn btn-danger" onclick="removeItem(${idx})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tfoot.innerHTML = `
+    <tr class="total-row">
+      <td colspan="5" class="left" style="text-align:left">TOTALES</td>
+      <td></td>
+      <td>${fmt(totCost)}</td>
+      <td></td>
+      <td></td>
+      <td>${fmt(totLog)}</td>
+      <td></td>
+      <td>${fmt(totFinal)}</td>
+      <td class="no-print"></td>
+    </tr>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER: FLUJO DE CAJA
+// ═══════════════════════════════════════════════════════════════
+function renderFlujo() {
+  const p  = params();
+  const { totalCosto, calcs } = totals();
+
+  // Risks
+  const totalRiesgos   = p.imprev + p.penal;
+  const totalCostoBase = totalCosto + totalRiesgos;
+
+  // Price based on target margin: P = C / (1 - margen)
+  const margenEfectivo = p.margen < 1 ? p.margen : 0.99;
+  const precioBase     = margenEfectivo < 1 ? totalCostoBase / (1 - margenEfectivo) : totalCostoBase * 2;
+
+  // Commissions on revenue
+  const comisionMonto = precioBase * p.comision;
+  const bonifMonto    = precioBase * p.bonif;
+  const totalComis    = comisionMonto + bonifMonto;
+
+  // Financial expenses
+  const totalFinan = p.fprinc + p.fint + p.fgar;
+
+  // Full cost
+  const totalCostoFull = totalCostoBase + totalComis + totalFinan;
+
+  // Margins
+  const utilBruta   = precioBase - totalCostoBase;
+  const mb          = precioBase > 0 ? utilBruta / precioBase : 0;
+  const utilComis   = precioBase - totalCostoBase - totalComis;
+  const mComis      = precioBase > 0 ? utilComis / precioBase : 0;
+  const utilFinal   = precioBase - totalCostoFull;
+  const mFinal      = precioBase > 0 ? utilFinal / precioBase : 0;
+
+  // VAN: discount cash flow by payment days
+  const r_period = p.tasa * (p.pago / 365);
+  const van      = utilFinal / (1 + r_period);
+
+  // TIR: return on cost (annualized)
+  const tir = totalCostoFull > 0 ? (utilFinal / totalCostoFull) * (365 / Math.max(p.pago, 1)) : 0;
+
+  // ── KPIs ───────────────────────────────────────────────────
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Precio de Venta</div>
+      <div class="kpi-value">${fmtK(precioBase)}</div>
+      <div class="kpi-sub">Sin IVA</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Margen Bruto (MB)</div>
+      <div class="kpi-value ${mb >= 0 ? 'green' : 'red'}">${pct(mb)}</div>
+      <div class="kpi-sub">${fmt(utilBruta)} utilidad bruta</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Margen Neto</div>
+      <div class="kpi-value ${mFinal >= 0 ? 'green' : 'red'}">${pct(mFinal)}</div>
+      <div class="kpi-sub">${fmt(utilFinal)} utilidad neta</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">VAN</div>
+      <div class="kpi-value ${van >= 0 ? 'green' : 'red'}">${fmtK(van)}</div>
+      <div class="kpi-sub">Tasa ${(p.tasa*100).toFixed(1)}% anual</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">TIR Anualizada</div>
+      <div class="kpi-value ${tir >= 0 ? 'green' : 'red'}">${pct(tir)}</div>
+      <div class="kpi-sub">Retorno sobre costo</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total con IVA</div>
+      <div class="kpi-value">${fmtK(precioBase * (1 + p.iva))}</div>
+      <div class="kpi-sub">IVA ${(p.iva*100).toFixed(0)}%: ${fmt(precioBase*p.iva)}</div>
+    </div>
+  `;
+
+  // ── Descomposición ─────────────────────────────────────────
+  const rows = [
+    { label: 'INGRESOS', section: true },
+    { label: 'Precio de Venta (sin IVA)', costo: null, precio: precioBase, pct: 1 },
+    { label: 'COSTOS', section: true },
+    { label: 'Costo Total con Logística', costo: totalCosto, precio: null, pct: totalCosto/precioBase },
+    ...items.map((it, i) => ({
+      label: '   · ' + it.desc,
+      costo: calcs[i].ctLog,
+      precio: null,
+      pct: calcs[i].ctLog / precioBase,
+      indent: true
+    })),
+    { label: 'Riesgos (Imprevistos + Penalizaciones)', costo: totalRiesgos, precio: null, pct: totalRiesgos/precioBase },
+    { label: 'Total Costos Base', subtotal: true, costo: totalCostoBase, precio: null, pct: totalCostoBase/precioBase },
+    { label: 'MARGEN BRUTO', section: true },
+    { label: 'Utilidad Bruta', costo: utilBruta, precio: null, pct: mb, green: utilBruta >= 0 },
+    { label: 'COMISIONES Y BONIFICACIONES', section: true },
+    { label: `Comisiones (${(p.comision*100).toFixed(2)}%)`, costo: comisionMonto, precio: null, pct: comisionMonto/precioBase },
+    { label: `Bonificaciones (${(p.bonif*100).toFixed(2)}%)`, costo: bonifMonto, precio: null, pct: bonifMonto/precioBase },
+    { label: 'Total Comisiones', subtotal: true, costo: totalComis, precio: null, pct: totalComis/precioBase },
+    { label: 'Total Costos + Comisiones', subtotal: true, costo: totalCostoBase+totalComis, precio: null, pct: (totalCostoBase+totalComis)/precioBase },
+    { label: 'Utilidad después Comisiones', costo: utilComis, precio: null, pct: mComis, green: utilComis >= 0 },
+    { label: 'GASTOS FINANCIEROS', section: true },
+    { label: 'Financiamiento (Principal)', costo: p.fprinc, precio: null, pct: p.fprinc/precioBase },
+    { label: 'Financiamiento (Intereses)', costo: p.fint, precio: null, pct: p.fint/precioBase },
+    { label: 'Garantías, Pólizas, Seguros', costo: p.fgar, precio: null, pct: p.fgar/precioBase },
+    { label: 'Total Gastos Financieros', subtotal: true, costo: totalFinan, precio: null, pct: totalFinan/precioBase },
+    { label: 'RESULTADO FINAL', section: true },
+    { label: 'Total Costos + Comisiones + Financiero', subtotal: true, costo: totalCostoFull, precio: null, pct: totalCostoFull/precioBase },
+    { label: 'UTILIDAD NETA', subtotal: true, costo: utilFinal, precio: null, pct: mFinal, green: utilFinal >= 0 },
+  ];
+
+  const tbody = document.getElementById('flujo-body');
+  tbody.innerHTML = rows.map(r => {
+    if (r.section) return `<tr class="section-header"><td colspan="4" class="left">${r.label}</td></tr>`;
+    const cls = r.subtotal ? 'subtotal' : '';
+    const colorCls = r.green !== undefined ? (r.green ? 'positive' : 'negative') : '';
+    return `<tr class="${cls}">
+      <td class="left ${colorCls}">${r.label}</td>
+      <td class="${colorCls}">${r.costo  !== null ? fmt(r.costo) : '—'}</td>
+      <td class="${colorCls}">${r.precio !== null ? fmt(r.precio) : '—'}</td>
+      <td class="${colorCls}">${r.pct  !== null && r.pct !== undefined ? pct(r.pct) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // save for quote tab
+  window._bc = { precioBase, p, items, calcs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER: COTIZACIÓN CLIENTE
+// ═══════════════════════════════════════════════════════════════
+function renderQuote() {
+  if (!window._bc) return;
+  const { precioBase, p, items, calcs } = window._bc;
+
+  // set date
+  const d = new Date();
+  document.getElementById('quote-date').textContent =
+    `Fecha: ${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+
+  const margenEfectivo = p.margen < 1 ? p.margen : 0.99;
+
+  // price per item proportional to their cost
+  const totalCosto = calcs.reduce((s, c) => s + c.ctLog, 0);
+
+  const tbody = document.getElementById('quote-body');
+  let lineNum = 1;
+  let html = `<tr class="section-header"><td colspan="3" class="left">Servicios</td><td></td></tr>`;
+  items.forEach((it, idx) => {
+    const costShare = totalCosto > 0 ? calcs[idx].ctLog / totalCosto : 1 / items.length;
+    const itemPrice = precioBase * costShare;
+    html += `<tr>
+      <td class="center">1</td>
+      <td class="center">${lineNum++}</td>
+      <td class="left">${esc(it.desc)}</td>
+      <td>${fmt(itemPrice)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+
+  const subtotal = precioBase;
+  const iva      = subtotal * p.iva;
+  const total    = subtotal + iva;
+
+  document.getElementById('quote-foot').innerHTML = `
+    <tr class="subtotal">
+      <td colspan="3" style="text-align:right">SUBTOTAL SIN IMPUESTO DE VENTAS</td>
+      <td>${fmt(subtotal)}</td>
+    </tr>
+    <tr class="subtotal">
+      <td colspan="3" style="text-align:right">IVA ${(p.iva*100).toFixed(0)}%</td>
+      <td>${fmt(iva)}</td>
+    </tr>
+    <tr class="total-row">
+      <td colspan="3" style="text-align:right">TOTAL</td>
+      <td>${fmt(total)}</td>
+    </tr>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MASTER RECALC
+// ═══════════════════════════════════════════════════════════════
+function recalc() {
+  renderCostTable();
+  renderFlujo();
+  renderQuote();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+const fmt  = v => v == null ? '' : (v < 0 ? `(${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})})` : v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
+const fmtK = v => {
+  const abs = Math.abs(v);
+  const str = abs >= 1000 ? `$${(abs/1000).toFixed(1)}K` : `$${abs.toFixed(0)}`;
+  return v < 0 ? `(${str})` : str;
+};
+const pct  = v => (v * 100).toFixed(1) + '%';
+const esc  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['costos','flujo','cotizacion'][i] === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  if (id === 'cotizacion') renderQuote();
+}
+
+function addItem() {
+  items.push({ desc: 'Nuevo ítem', qty: 1, unitCost: 0, discPct: 0, logPct: 0 });
+  recalc();
+}
+
+function removeItem(idx) {
+  if (items.length <= 1) { alert('Debe quedar al menos un ítem.'); return; }
+  items.splice(idx, 1);
+  recalc();
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+recalc();
+</script>
+</body>
+</html>
